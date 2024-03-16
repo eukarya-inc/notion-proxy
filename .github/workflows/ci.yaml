@@ -16,7 +16,7 @@ jobs:
           node-version: '18.x'
 
       - name: Dependencies
-        run: npm ci && npm
+        run: npm ci
 
       - name: Build
         run: npm install -g pkg && npm run build
