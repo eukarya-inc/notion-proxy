@@ -9,7 +9,8 @@ class ContentCache {
       return;
     }
 
-    this.cache[originUrl] = new CacheData(this.toSec(Date.now()) + this.expiresSec, content);
+    const now = this.toSec(Date.now());
+    this.cache[originUrl] = new CacheData(now + this.expiresSec, content);
   }
 
   getData(originUrl) {

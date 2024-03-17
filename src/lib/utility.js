@@ -53,8 +53,16 @@ function getMineType(url, currentContentType) {
   return currentContentType;
 }
 
+function isContent(originalUrl) {
+  if (originalUrl.startsWith('/image') || originalUrl.startsWith('/icons') || originalUrl.endsWith('.wasm')) {
+    return true
+  }
+  return false;
+}
+
 module.exports = {
   generateSitemap: generateSitemap,
   generateNotionUrl: generateNotionUrl,
   getMineType: getMineType,
+  isContent: isContent,
 };
