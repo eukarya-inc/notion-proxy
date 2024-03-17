@@ -64,10 +64,10 @@ class NotionProxy {
     let url;
     try {
       url = utility.generateNotionUrl(req, res, this.PERMA_TO_PAGE, this.SLUG_TO_PAGE);
-      //console.log('PROXY_TO    ' + url)
+      // console.log('[DEBUG] PROXY_TO    ' + url)
     } catch (e) {
       if (e instanceof Redirect) {
-        //console.log('REDIRECT_TO ' + e.message);
+        // console.log('[DEBUG] REDIRECT_TO ' + e.message);
         return res.redirect(301, '/' + e.message);
       } else {
         console.error(e)
@@ -77,16 +77,15 @@ class NotionProxy {
     }
 
     const requestHeader = req.headers
-    requestHeader['If-Modified-Since'] = new Date().toString();
     delete requestHeader['host']
     delete requestHeader['referer']
     res.headers = requestHeader
+
     let contentType = mime.lookup(req.originalUrl)
     if (!contentType) {
       contentType = 'text/html'
     }
     contentType = utility.getMineType(req.originalUrl, contentType);
-
     res.set('Content-Type', contentType)
     res.removeHeader('Content-Security-Policy')
     res.removeHeader('X-Content-Security-Policy')
@@ -96,11 +95,15 @@ class NotionProxy {
       return res.send(cachedData);
     }
 
+    if (utility.isContent(req.originalUrl)) {
+      // Set it to If-Modified-Since now to accommodate 304
+      requestHeader['If-Modified-Since'] = new Date().toString();
+    }
+
     return fetch(url, {
       headers: requestHeader,
       method: 'GET',
     }, (error, header, body) => {
-      let isObjectData = false;
 
       // See https://github.com/stephenou/fruitionsite
       if (req.originalUrl.startsWith('/app') && req.originalUrl.endsWith('js')) {
@@ -108,18 +111,15 @@ class NotionProxy {
         body = body.toString().replace(/www.notion.so/g, this.DOMAIN).replace(/notion.so/g, this.DOMAIN)
       } else if (req.originalUrl.endsWith('css') || req.originalUrl.endsWith('js')) {
         body = body.toString()
-      } else if (req.originalUrl.startsWith('/image') || req.originalUrl.startsWith('/icons') || req.originalUrl.endsWith('.wasm')) {
+      } else if (utility.isContent(req.originalUrl)) {
         // Nothing
-        isObjectData = true;
       } else if (header !== undefined) {
         const dom = new JSDOM(body.toString(), { includeNodeLocations: true })
         this.PARSER.parse(dom.window.document);
         body = dom.serialize();
       }
 
-      if (!isObjectData) {
-        this.CACHE_STORE.setData(req.originalUrl, body);
-      }
+      this.CACHE_STORE.setData(req.originalUrl, body);
       return res.send(body);
     })
   }
