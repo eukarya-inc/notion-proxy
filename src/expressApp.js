@@ -1,6 +1,5 @@
 const EnvConfig = require("./config/env");
 const NotionProxy = require("./proxy/notionProxy");
-const cors = require('cors')
 const compression = require('compression')
 const express = require('express')
 
@@ -9,7 +8,6 @@ function main() {
   const proxy = new NotionProxy(envConfig);
   const app = express()
   app.use(compression())
-  app.use(cors())
   app.use(express.raw({ type: "application/json" }))
 
   app.get('/sitemap.xml', (req, res) => {
@@ -24,7 +22,7 @@ function main() {
   app.post('*', (req, res) => {
     return proxy.post(req, res)
   })
-  app.options('*', (reqw, res) => {
+  app.options('*', (req, res) => {
     return proxy.options(req, res)
   })
   app.use((err, req, res, next) => {
