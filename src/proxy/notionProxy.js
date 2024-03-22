@@ -16,7 +16,6 @@ class NotionProxy {
   constructor(env) {
     this.DOMAIN = env.domain;
     this.SLUG_TO_PAGE = env.slugToPage;
-    this.PERMA_TO_PAGE = {};
     this.CACHE_STORE = new ContentCache(env.contentCacheSec);
     this.PARSER = new HtmlParser(
         env.pageTitle,
@@ -63,11 +62,9 @@ class NotionProxy {
   get(req, res) {
     let url;
     try {
-      url = utility.generateNotionUrl(req, res, this.PERMA_TO_PAGE, this.SLUG_TO_PAGE);
-      // console.log('[DEBUG] PROXY_TO    ' + url)
+      url = utility.generateNotionUrl(req, this.SLUG_TO_PAGE);
     } catch (e) {
       if (e instanceof Redirect) {
-        // console.log('[DEBUG] REDIRECT_TO ' + e.message);
         return res.redirect(301, '/' + e.message);
       } else {
         console.error(e)
@@ -85,7 +82,7 @@ class NotionProxy {
     if (!contentType) {
       contentType = 'text/html'
     }
-    contentType = utility.getMineType(req.originalUrl, contentType);
+    contentType = utility.getMineTypeIfAwsUrl(req.originalUrl, contentType);
     res.set('Content-Type', contentType)
     res.removeHeader('Content-Security-Policy')
     res.removeHeader('X-Content-Security-Policy')
@@ -161,8 +158,9 @@ class NotionProxy {
    * @param res Response of express
    */
   options(req, res) {
+    res.set('Access-Control-Allow-Origin', '*');
     res.set('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
-    res.set('Access-Control-Allow-Headers', 'Content-Type');
+    res.set('Vary', 'Access-Control-Request-Headers');
     res.status(204).send();
   }
 }

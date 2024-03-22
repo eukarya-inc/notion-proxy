@@ -11,7 +11,7 @@ class HtmlParser {
    * @param isTls Env.isTls
    * @param stp slug to page record
    */
-  constructor(pageTitle, pageDesc,googleFont, domain, customScript, isTls, stp) {
+  constructor(pageTitle, pageDesc, googleFont, domain, customScript, isTls, stp) {
     this.PAGE_TITLE = pageTitle;
     this.PAGE_DESCRIPTION = pageDesc;
     this.GOOGLE_FONT = googleFont;

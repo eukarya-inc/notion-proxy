@@ -1,4 +1,4 @@
-const RedirectException = require('./redirect');
+const Redirect = require('./redirect');
 
 function generateSitemap(domain, slugToPage) {
   let sitemap = '<?xml version="1.0" encoding="utf-8"?>'
@@ -14,24 +14,20 @@ function generateSitemap(domain, slugToPage) {
   return sitemap
 }
 
-function generateNotionUrl(req, res, permaToPage, slugToPage) {
+function generateNotionUrl(req, slugToPage) {
   let url = 'https://www.notion.so'
   let uri = req.originalUrl.substring(1)
 
-  if (permaToPage.hasOwnProperty(uri)) {
-    url = permaToPage[uri].split('/').pop();
-    throw new RedirectException(url);
-
-  } else if (slugToPage.hasOwnProperty(uri)) {
+  if (slugToPage.hasOwnProperty(uri)) {
     url = slugToPage[uri].split('/').pop();
-    throw new RedirectException(url);
+    throw new Redirect(url);
 
-  } else if (req.originalUrl.startsWith('/image/https:/')) {
+  } else if (req.originalUrl.startsWith('/image/https')) {
     let uri = req.originalUrl.replace('https:/s3','https://s3')
-    const sub_url = uri.substring(7)
-    const sub_url_noparam = sub_url.split('?')[0]
-    const sub_url_param = sub_url.split('?')[1]
-    url += '/image/' + encodeURIComponent(sub_url_noparam) + '?' + sub_url_param
+    const subUrl = uri.substring(7)
+    const p1 = subUrl.split('?')[0]
+    const p2 = subUrl.split('?')[1]
+    url += '/image/' + encodeURIComponent(p1) + '?' + p2
 
   } else {
     url += req.originalUrl
@@ -40,11 +36,17 @@ function generateNotionUrl(req, res, permaToPage, slugToPage) {
 }
 
 const AMAZON_NAWS_FLG = 'amazonaws.com';
-function getMineType(url, currentContentType) {
+function getMineTypeIfAwsUrl(url, currentContentType) {
   if (url.includes(AMAZON_NAWS_FLG) && url.includes('.png')) {
     return 'image/png';
   } else if (url.includes(AMAZON_NAWS_FLG) && url.includes('.jpg')) {
     return 'image/jpg';
+  } else if (url.includes(AMAZON_NAWS_FLG) && url.includes('.jpeg')) {
+    return 'image/jpeg';
+  } else if (url.includes(AMAZON_NAWS_FLG) && url.includes('.gif')) {
+    return 'image/gif';
+  } else if (url.includes(AMAZON_NAWS_FLG) && url.includes('.tiff')) {
+    return 'image/tiff';
   } else if (url.includes(AMAZON_NAWS_FLG) && url.includes('.svg')) {
     return 'image/svg+xml'
   } else if (url.startsWith('/icons')) {
@@ -63,6 +65,6 @@ function isContent(originalUrl) {
 module.exports = {
   generateSitemap: generateSitemap,
   generateNotionUrl: generateNotionUrl,
-  getMineType: getMineType,
+  getMineTypeIfAwsUrl: getMineTypeIfAwsUrl,
   isContent: isContent,
 };
