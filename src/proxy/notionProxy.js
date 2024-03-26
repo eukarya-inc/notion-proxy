@@ -59,7 +59,7 @@ class NotionProxy {
    * @param res Response of express
    * @returns {*|void}
    */
-  get(req, res) {
+  async get(req, res) {
     let url;
     try {
       url = utility.generateNotionUrl(req, this.SLUG_TO_PAGE);
@@ -87,7 +87,7 @@ class NotionProxy {
     res.removeHeader('Content-Security-Policy')
     res.removeHeader('X-Content-Security-Policy')
 
-    const cachedData = this.CACHE_STORE.getData(req.originalUrl);
+    const cachedData = await this.CACHE_STORE.getData(req.originalUrl);
     if (cachedData !== null) {
       return res.send(cachedData);
     }
