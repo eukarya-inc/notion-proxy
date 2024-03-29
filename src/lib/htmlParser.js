@@ -1,40 +1,75 @@
+const {JSDOM} = require("jsdom");
+
 class HtmlParser {
 
   /**
    * Constructor.
    *
-   * @param pageTitle Env.pageTitle
-   * @param pageDesc Env.pageDesc
-   * @param googleFont Env.googleFont
-   * @param domain Env.domain
-   * @param customScript Env.customScript
-   * @param isTls Env.isTls
+   * @param pageTitle ProxyConfig.ogTag.title
+   * @param pageDesc ProxyConfig.ogTag.desc
+   * @param pageImage ProxyConfig.ogTag.image
+   * @param pageUrl ProxyConfig.ogTag.url
+   * @param pageType ProxyConfig.ogTag.pageType
+   * @param twitterCard ProxyConfig.twitterTag.twitterCard
+   * @param googleFont ProxyConfig.googleFont
+   * @param domain ProxyConfig.domain
+   * @param customScript ProxyConfig.customScript
+   * @param isTls ProxyConfig.isTls
    * @param stp slug to page record
    */
-  constructor(pageTitle, pageDesc, googleFont, domain, customScript, isTls, stp) {
-    this.PAGE_TITLE = pageTitle;
-    this.PAGE_DESCRIPTION = pageDesc;
-    this.GOOGLE_FONT = googleFont;
-    this.DOMAIN = domain;
-    this.CUSTOM_SCRIPT = customScript;
-    this.IS_TLS = isTls === 'true';
-    this.SLUG_TO_PAGE = stp;
+  constructor(pageTitle, pageDesc, pageImage, pageUrl, pageType, twitterCard, googleFont, domain, customScript, isTls, stp) {
+    this.pageTitle = pageTitle;
+    this.pageDescription = pageDesc;
+    this.pageImage = pageImage;
+    this.pageUrl = pageUrl;
+    this.pageType = pageType;
+    this.twitterCard = twitterCard;
+    this.googleFont = googleFont;
+    this.domain = domain;
+    this.customScript = customScript;
+    this.isTls = isTls;
+    this.slugToPage = stp;
+  }
+
+  parseMetaImageWithoutDom(htmlStr) {
+    if (this.pageImage !== '') {
+      htmlStr = htmlStr.replace(/(<meta property="og:image" content=")([^"]*)("[^>]*>)/g, `$1${this.pageImage}$3`);
+      htmlStr = htmlStr.replace(/(<meta name="twitter:image" content=")([^"]*)("[^>]*>)/g, `$1${this.pageImage}$3`);
+    }
+    return htmlStr;
   }
 
   parseMeta(element) {
     try {
-      if (this.PAGE_TITLE !== '') {
+      if (this.pageTitle !== '') {
         if (element.getAttribute('property') === 'og:title' || element.getAttribute('name') === 'twitter:title') {
-          element.setAttribute('content', this.PAGE_TITLE);
+          element.setAttribute('content', this.pageTitle);
         }
       }
-      if (this.PAGE_DESCRIPTION !== '') {
+      if (this.pageDescription !== '') {
         if (element.getAttribute('name') === 'description' || element.getAttribute('property') === 'og:description' || element.getAttribute('name') === 'twitter:description') {
-          element.setAttribute('content', this.PAGE_DESCRIPTION);
+          element.setAttribute('content', this.pageDescription);
         }
       }
-      if (element.getAttribute('property') === 'og:url' || element.getAttribute('name') === 'twitter:url') {
-        element.setAttribute('content', this.DOMAIN);
+      if (this.pageUrl !== '') {
+        if (element.getAttribute('property') === 'og:url' || element.getAttribute('name') === 'twitter:url') {
+          element.setAttribute('content', this.pageUrl);
+        }
+      }
+      if (this.pageType !== '') {
+        if (element.getAttribute('property') === 'og:type') {
+          element.setAttribute('content', this.pageType);
+        }
+      }
+      if (this.domain !== '') {
+        if (element.getAttribute('property') === 'twitter:domain') {
+          element.setAttribute('content', this.domain);
+        }
+      }
+      if (this.twitterCard !== '') {
+        if (element.getAttribute('property') === 'twitter:card') {
+          element.setAttribute('content', this.twitterCard);
+        }
       }
       if (element.getAttribute('name') === 'apple-itunes-app') {
         element.remove();
@@ -45,11 +80,11 @@ class HtmlParser {
   }
 
   parseHead(element) {
-    if (this.GOOGLE_FONT !== '') {
+    if (this.googleFont !== '') {
       element.innerHTML += `<link href="https://fonts.googleapis.com/css?family=
-      ${this.GOOGLE_FONT.replace(' ', '+')}:
+      ${this.googleFont.replace(' ', '+')}:
       Regular,Bold,Italic&display=swap" rel="stylesheet">
-      <style>* { font-family: "${this.GOOGLE_FONT}" !important; }
+      <style>* { font-family: "${this.googleFont}" !important; }
       .notion-topbar { display: none; }
       .notion-selectable.notion-collection_view-block > div > div > div > a { display: none!important; }
       </style>`;
@@ -57,11 +92,11 @@ class HtmlParser {
   }
 
   parseBody(element) {
-    const protocol = this.IS_TLS ? 'https' : 'http';
+    const protocol = this.isTls ? 'https' : 'http';
     element.innerHTML += `
     <script>
-    window.CONFIG.domainBaseUrl = '${protocol}://${this.DOMAIN}';
-    const SLUG_TO_PAGE =  ${JSON.stringify(this.SLUG_TO_PAGE)};
+    window.CONFIG.domainBaseUrl = '${protocol}://${this.domain}';
+    const SLUG_TO_PAGE =  ${JSON.stringify(this.slugToPage)};
     const PAGE_TO_SLUG = {};
     const slugs = [];
     const pages = [];
@@ -129,15 +164,21 @@ class HtmlParser {
     };
     const open = window.XMLHttpRequest.prototype.open;
     window.XMLHttpRequest.prototype.open = function() {
-      arguments[1] = arguments[1].replace('${protocol}://${this.DOMAIN}', 'www.notion.so');
+      arguments[1] = arguments[1].replace('${protocol}://${this.domain}', 'www.notion.so');
       return open.apply(this, [].slice.call(arguments));
     };
     <!-- required for comments identification -->
     document.notionPageID = getPage();
-  </script>${this.CUSTOM_SCRIPT}`
+  </script>${this.customScript}`
   }
 
-  parse(document) {
+  parseNotionUrl(htmlStr) {
+    return htmlStr.toString().replace(/www.notion.so/g, this.domain).replace(/notion.so/g, this.domain);
+  }
+
+  parse(responseBodyStr) {
+    const dom = new JSDOM(responseBodyStr, { includeNodeLocations: true })
+    const document = dom.window.document;
     let title = document.querySelector('title')
     if (title) {
       this.parseMeta(title)
@@ -157,6 +198,10 @@ class HtmlParser {
     if (tagBody) {
       this.parseBody(tagBody)
     }
+
+    let parsedHtmlStr = dom.serialize();
+    parsedHtmlStr = this.parseMetaImageWithoutDom(parsedHtmlStr);
+    return parsedHtmlStr;
   }
 }
 

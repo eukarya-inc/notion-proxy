@@ -1,30 +1,88 @@
-const utility = require("../lib/utility");
+const Utility = require("../lib/utility");
 const Redirect = require("../lib/redirect");
 const HtmlParser = require("../lib/htmlParser");
+const AutoOgpExtractor = require("../lib/autoOgpExtractor");
 const ContentCache = require("./contentCache");
 const mime = require("mime-types");
 const {fetchUrl: fetch} = require("fetch");
-const {JSDOM} = require("jsdom");
 
 class NotionProxy {
 
   /**
    * Constructor.
    *
-   * @param env Env class
+   * @param config ProxyConfig class
    */
-  constructor(env) {
-    this.DOMAIN = env.domain;
-    this.SLUG_TO_PAGE = env.slugToPage;
-    this.CACHE_STORE = new ContentCache(env.contentCacheSec);
-    this.PARSER = new HtmlParser(
-        env.pageTitle,
-        env.pageDesc,
-        env.googleFont,
-        env.domain,
-        env.customScript,
-        env.isTls,
-        this.SLUG_TO_PAGE);
+  constructor(config) {
+    this.initialize(config);
+  }
+
+  /**
+   * Init field variable.
+   *
+   * @param config ProxyConfig class
+   * @param isReloadedVariable Reloaded variable for automatic set OGP
+   */
+  initialize(config, isReloadedVariable = false) {
+    this.proxyConfig = config;
+    this.cacheStore = new ContentCache(config.contentCacheSec);
+    this.autoOgpExtractor = new AutoOgpExtractor(
+        config.notionPageId,
+        config.domain,
+        config.isTls
+    );
+    this.htmlParser = new HtmlParser(
+        config.ogTag.title,
+        config.ogTag.desc,
+        config.ogTag.image,
+        config.ogTag.url,
+        config.ogTag.type,
+        config.twitterTag.card,
+        config.googleFont,
+        config.domain,
+        config.customScript,
+        config.isTls,
+        config.slugToPage
+    );
+
+    if (config.autoSetOgp && isReloadedVariable) {
+      this.readyz = true;
+      this.livez = true;
+    } else if (config.autoSetOgp && !isReloadedVariable) {
+      this.readyz = false;
+      this.livez = true;
+    } else {
+      this.readyz = true;
+      this.livez = true;
+    }
+  }
+
+  /**
+   * Reload proxy config if AUTO_SET_OGP enabled.
+   *
+   * @returns {Promise<void>}
+   */
+  async reloadProxyConfig() {
+    if (!this.proxyConfig.autoSetOgp) {
+      return;
+    }
+    const html = await this.autoOgpExtractor.fetchHtmlAfterExecutedJs();
+    const title = this.autoOgpExtractor.extractOgTitle(html);
+    const image = this.autoOgpExtractor.extractOgImage(html);
+    if (title !== null) {
+      this.proxyConfig.ogTag.replaceTitle(title)
+      this.proxyConfig.twitterTag.replaceTitle(title)
+    }
+    if (image !== null) {
+      this.proxyConfig.ogTag.replaceImage(image)
+      this.proxyConfig.twitterTag.replaceImage(image)
+    }
+    if (title === null && image === null) {
+      console.log('[WARN] Failed to fetch OGP tag automatically');
+    } else {
+      console.log(`Successful automatic fetched of OGP tag. Title: ${title}, Image: ${image.substring(0, 30)}...`);
+    }
+    this.initialize(this.proxyConfig, true);
   }
 
   /**
@@ -36,7 +94,7 @@ class NotionProxy {
    */
   getSitemap(req, res) {
     res.set('Content-Type', 'application/xml; charset=utf-8')
-    return res.send(utility.generateSitemap(this.DOMAIN, this.SLUG_TO_PAGE))
+    return res.send(Utility.generateSitemap(this.proxyConfig.domain, this.proxyConfig.slugToPage))
   }
 
   /**
@@ -53,6 +111,33 @@ class NotionProxy {
   }
 
   /**
+   * GET readyz
+   * When the automatic OGP tag extraction process is complete, the proxy will be set to Ready regardless of success or failure.
+   * The extract process is dependent on the Chrome environment, so NotionProxy is set to Ready regardless.
+   *
+   * @param req Request of express
+   * @param res Response of express
+   * @returns {*}
+   */
+  getReadyZ(req, res) {
+    if (!this.readyz) {
+      return res.status(503).send('Not ready yet because server is extracting ogp tag automatically');
+    }
+    return res.status(200).send('OK');
+  }
+
+  /**
+   * GET livez
+   *
+   * @param req Request of express
+   * @param res Response of express
+   * @returns {*}
+   */
+  getLiveZ(req, res) {
+    return res.status(200).send('OK');
+  }
+
+  /**
    * GET *
    *
    * @param req Request of express
@@ -62,7 +147,7 @@ class NotionProxy {
   async get(req, res) {
     let url;
     try {
-      url = utility.generateNotionUrl(req, this.SLUG_TO_PAGE);
+      url = Utility.generateNotionUrl(req, this.proxyConfig.slugToPage);
     } catch (e) {
       if (e instanceof Redirect) {
         return res.redirect(301, '/' + e.message);
@@ -82,17 +167,17 @@ class NotionProxy {
     if (!contentType) {
       contentType = 'text/html'
     }
-    contentType = utility.getMineTypeIfAwsUrl(req.originalUrl, contentType);
+    contentType = Utility.getMineTypeIfAwsUrl(req.originalUrl, contentType);
     res.set('Content-Type', contentType)
     res.removeHeader('Content-Security-Policy')
     res.removeHeader('X-Content-Security-Policy')
 
-    const cachedData = await this.CACHE_STORE.getData(req.originalUrl);
+    const cachedData = await this.cacheStore.getData(req.originalUrl);
     if (cachedData !== null) {
       return res.send(cachedData);
     }
 
-    if (utility.isContent(req.originalUrl)) {
+    if (Utility.isContent(req.originalUrl)) {
       // Set it to If-Modified-Since now to accommodate 304
       requestHeader['If-Modified-Since'] = new Date().toString();
     }
@@ -102,22 +187,22 @@ class NotionProxy {
       method: 'GET',
     }, (error, header, body) => {
 
+      let newBody = body;
+
       // See https://github.com/stephenou/fruitionsite
       if (req.originalUrl.startsWith('/app') && req.originalUrl.endsWith('js')) {
         res.set('Content-Type', 'application/x-javascript')
-        body = body.toString().replace(/www.notion.so/g, this.DOMAIN).replace(/notion.so/g, this.DOMAIN)
+        newBody = this.htmlParser.parseNotionUrl(newBody.toString());
       } else if (req.originalUrl.endsWith('css') || req.originalUrl.endsWith('js')) {
-        body = body.toString()
-      } else if (utility.isContent(req.originalUrl)) {
+        newBody = newBody.toString()
+      } else if (Utility.isContent(req.originalUrl)) {
         // Nothing
       } else if (header !== undefined) {
-        const dom = new JSDOM(body.toString(), { includeNodeLocations: true })
-        this.PARSER.parse(dom.window.document);
-        body = dom.serialize();
+        newBody = this.htmlParser.parse(newBody.toString());
       }
 
-      this.CACHE_STORE.setData(req.originalUrl, body);
-      return res.send(body);
+      this.cacheStore.setData(req.originalUrl, newBody);
+      return res.send(newBody);
     })
   }
 

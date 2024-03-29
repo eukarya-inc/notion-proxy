@@ -2,24 +2,34 @@ const HtmlParser = require("./htmlParser");
 const slugToPage = {'': 'f1db0cfbe246475784c67f279289abea'}
 const {JSDOM} = require("jsdom");
 
-test('Parse html for Notion', () => {
-
+function getParser() {
   const title = 'Test Title';
   const desc = 'Test Desc';
+  const image = 'https://eukarya.io/img/logo.svg';
+  const url = 'https://eukarya.io';
+  const type = 'website';
+  const twitterCard = 'summary_large_image';
   const googleFont = '';
   const domain = 'eukarya.io';
   const customScript = '<script>console.log("hello world custom script")</script>';
   const isTls = 'true';
 
-  const parser = new HtmlParser(
+  return new HtmlParser(
       title,
       desc,
+      image,
+      url,
+      type,
+      twitterCard,
       googleFont,
       domain,
       customScript,
       isTls,
       slugToPage);
+}
 
+test('Parse html for Notion', () => {
+  const parser = getParser();
   const element = new JSDOM(
       `
 <html class="notion-html">
@@ -28,20 +38,34 @@ test('Parse html for Notion', () => {
   <meta name="viewport" content="width=device-width,height=device-height,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
   <title>Notion – The all-in-one workspace for your notes, tasks, wikis, and databases.</title>
   <meta name="description" content="A new tool that blends your everyday work apps into one. It's the all-in-one workspace for you and your team">
+  <meta property="og:site_name" content="Notion">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="http://localhost:3456">
+  <meta property="og:title" content="Notion – The all-in-one workspace for your notes, tasks, wikis, and databases.">
+  <meta property="og:description" content="A new tool that blends your everyday work apps into one. It's the all-in-one workspace for you and your team">
+  <meta property="og:image" content="https://www.notion.so/images/meta/default.png">
+  <meta property="og:locale" content="en_US">
 </head>
 <body>
   <p>Hello</p>
 </body>
 </html>`);
 
-  parser.parse(element.window.document);
+  const resultHtml = parser.parse(element.window.document.documentElement.outerHTML);
 
-  expect(element.window.document.documentElement.outerHTML).toBe(
+  expect(resultHtml).toBe(
 `<html class="notion-html"><head lang="en">
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,height=device-height,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
   <title>Notion – The all-in-one workspace for your notes, tasks, wikis, and databases.</title>
   <meta name="description" content="Test Desc">
+  <meta property="og:site_name" content="Notion">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://eukarya.io">
+  <meta property="og:title" content="Test Title">
+  <meta property="og:description" content="Test Desc">
+  <meta property="og:image" content="https://eukarya.io/img/logo.svg">
+  <meta property="og:locale" content="en_US">
 </head>
 <body>
   <p>Hello</p>
@@ -123,4 +147,12 @@ test('Parse html for Notion', () => {
     <!-- required for comments identification -->
     document.notionPageID = getPage();
   </script><script>console.log("hello world custom script")</script></body></html>`);
+});
+
+test('Parse Notion url', () => {
+  const parser = getParser();
+  const notionUrl = "https://www.notion.so/hello";
+  const parsedNotionUrl = parser.parseNotionUrl(notionUrl);
+
+  expect(parsedNotionUrl).toBe('https://eukarya.io/hello');
 });

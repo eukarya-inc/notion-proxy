@@ -1,5 +1,5 @@
 const functions = require('@google-cloud/functions-framework');
-const EnvConfig = require("./config/env");
+const EnvConfig = require("./config/proxyConfig");
 const NotionProxy = require("./proxy/notionProxy");
 
 let finishInitialize = false
