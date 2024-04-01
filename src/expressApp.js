@@ -1,11 +1,11 @@
 const ProxyConfig = require("./config/proxyConfig");
-const NotionProxy = require("./proxy/notionProxy");
+const Proxy = require("./proxy/proxy");
 const compression = require('compression')
 const express = require('express')
 
 function main() {
   const proxyConfig = new ProxyConfig();
-  const proxy = new NotionProxy(proxyConfig);
+  const proxy = new Proxy(proxyConfig);
 
   const app = express()
   app.use(compression())

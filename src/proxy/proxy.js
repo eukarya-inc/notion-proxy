@@ -6,7 +6,7 @@ const ContentCache = require("./contentCache");
 const mime = require("mime-types");
 const {fetchUrl: fetch} = require("fetch");
 
-class NotionProxy {
+class Proxy {
 
   /**
    * Constructor.
@@ -67,20 +67,24 @@ class NotionProxy {
       return;
     }
     const html = await this.autoOgpExtractor.fetchHtmlAfterExecutedJs();
-    const title = this.autoOgpExtractor.extractOgTitle(html);
-    const image = this.autoOgpExtractor.extractOgImage(html);
-    if (title !== null) {
-      this.proxyConfig.ogTag.replaceTitle(title)
-      this.proxyConfig.twitterTag.replaceTitle(title)
+    const fetchedTitle = this.autoOgpExtractor.extractOgTitle(html);
+    const fetchedImage = this.autoOgpExtractor.extractOgImage(html);
+    if (fetchedTitle !== null && this.proxyConfig.ogTag.title === '') {
+      this.proxyConfig.ogTag.replaceTitle(fetchedTitle)
+      this.proxyConfig.twitterTag.replaceTitle(fetchedTitle)
     }
-    if (image !== null) {
-      this.proxyConfig.ogTag.replaceImage(image)
-      this.proxyConfig.twitterTag.replaceImage(image)
+    if (fetchedImage !== null && this.proxyConfig.ogTag.image === '') {
+      this.proxyConfig.ogTag.replaceImage(fetchedImage)
+      this.proxyConfig.twitterTag.replaceImage(fetchedImage)
     }
-    if (title === null && image === null) {
+    if (fetchedTitle === null && fetchedImage === null) {
       console.log('[WARN] Failed to fetch OGP tag automatically');
     } else {
-      console.log(`Successful automatic fetched of OGP tag. Title: ${title}, Image: ${image.substring(0, 30)}...`);
+      const imgMsg = this.proxyConfig.ogTag.image.length > 30 ?
+          `${this.proxyConfig.ogTag.image.substring(0, 30)}...` : this.proxyConfig.ogTag.image;
+      console.log('Successful automatic fetched of OGP tag.' +
+          ` Title: ${this.proxyConfig.ogTag.title}` +
+          ` Image: ${imgMsg}`);
     }
     this.initialize(this.proxyConfig, true);
   }
@@ -250,4 +254,4 @@ class NotionProxy {
   }
 }
 
-module.exports = NotionProxy;
+module.exports = Proxy;
