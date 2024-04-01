@@ -1,11 +1,12 @@
-const EnvConfig = require("./config/env");
-const NotionProxy = require("./proxy/notionProxy");
+const ProxyConfig = require("./config/proxyConfig");
+const Proxy = require("./proxy/proxy");
 const compression = require('compression')
 const express = require('express')
 
 function main() {
-  const envConfig = new EnvConfig();
-  const proxy = new NotionProxy(envConfig);
+  const proxyConfig = new ProxyConfig();
+  const proxy = new Proxy(proxyConfig);
+
   const app = express()
   app.use(compression())
   app.use(express.raw({ type: "application/json" }))
@@ -15,6 +16,12 @@ function main() {
   });
   app.get('/robots.txt', (req, res) => {
     return proxy.getRobotsTxt(req, res);
+  });
+  app.get('/readyz', (req, res) => {
+    return proxy.getReadyZ(req, res);
+  });
+  app.get('/livez', (req, res) => {
+    return proxy.getLiveZ(req, res);
   });
   app.get('*', (req, res) => {
     return proxy.get(req, res);
@@ -29,8 +36,9 @@ function main() {
     console.error(err.stack)
     res.status(500).send('Unexpected error occurred')
   })
-  app.listen(Number(envConfig.proxyPort), () => {
-    console.log(`NotionProxy listening at localhost:${envConfig.proxyPort}, NotionId: ${envConfig.notionPageId}`)
+  app.listen(Number(proxyConfig.proxyPort), async () => {
+    await proxy.reloadProxyConfig();
+    console.log(`NotionProxy listening at localhost:${proxyConfig.proxyPort}, NotionId: ${proxyConfig.notionPageId}`)
   })
 }
 
