@@ -14,22 +14,24 @@ class Proxy {
    * @param config ProxyConfig class
    */
   constructor(config) {
-    this.initialize(config);
+    let isReady = !config.autoSetOgTag;
+    this.initVariable(config, isReady);
   }
 
   /**
    * Init field variable.
    *
    * @param config ProxyConfig class
-   * @param isReloadedVariable Reloaded variable for automatic set OGP
+   * @param isReady Whether automatic OGP extraction is successful or not
    */
-  initialize(config, isReloadedVariable = false) {
+  initVariable(config, isReady) {
     this.proxyConfig = config;
     this.cacheStore = new ContentCache(config.contentCacheSec);
     this.autoOgpExtractor = new AutoOgpExtractor(
         config.notionPageId,
         config.domain,
-        config.isTls
+        config.isTls,
+        config.proxyPort
     );
     this.htmlParser = new HtmlParser(
         config.ogTag.title,
@@ -38,6 +40,7 @@ class Proxy {
         config.ogTag.url,
         config.ogTag.type,
         config.twitterTag.card,
+        config.iconUrl,
         config.googleFont,
         config.domain,
         config.customScript,
@@ -45,48 +48,56 @@ class Proxy {
         config.slugToPage
     );
 
-    if (config.autoSetOgp && isReloadedVariable) {
-      this.readyz = true;
-      this.livez = true;
-    } else if (config.autoSetOgp && !isReloadedVariable) {
-      this.readyz = false;
-      this.livez = true;
-    } else {
-      this.readyz = true;
-      this.livez = true;
-    }
+    this.readyz = isReady;
+    this.livez = true;
   }
 
   /**
    * Reload proxy config if AUTO_SET_OGP enabled.
+   * Failure safe processing
    *
    * @returns {Promise<void>}
    */
   async reloadProxyConfig() {
-    if (!this.proxyConfig.autoSetOgp) {
+    if (!this.proxyConfig.autoSetOgTag) {
       return;
     }
+
     const html = await this.autoOgpExtractor.fetchHtmlAfterExecutedJs();
     const fetchedTitle = this.autoOgpExtractor.extractOgTitle(html);
     const fetchedImage = this.autoOgpExtractor.extractOgImage(html);
+    const fetchedIcon = this.autoOgpExtractor.extractIcon(html);
+
     if (fetchedTitle !== null && this.proxyConfig.ogTag.title === '') {
-      this.proxyConfig.ogTag.replaceTitle(fetchedTitle)
-      this.proxyConfig.twitterTag.replaceTitle(fetchedTitle)
+      this.proxyConfig.ogTag.replaceTitle(fetchedTitle);
+      this.proxyConfig.twitterTag.replaceTitle(fetchedTitle);
     }
     if (fetchedImage !== null && this.proxyConfig.ogTag.image === '') {
-      this.proxyConfig.ogTag.replaceImage(fetchedImage)
-      this.proxyConfig.twitterTag.replaceImage(fetchedImage)
+      this.proxyConfig.ogTag.replaceImage(fetchedImage);
+      this.proxyConfig.twitterTag.replaceImage(fetchedImage);
     }
-    if (fetchedTitle === null && fetchedImage === null) {
+    if (fetchedIcon !== null && this.proxyConfig.iconUrl === '') {
+      this.proxyConfig.replaceIconUrl(fetchedIcon);
+    }
+
+    let isReady;
+    if (fetchedTitle === null && fetchedImage === null && fetchedIcon === null) {
       console.log('[WARN] Failed to fetch OGP tag automatically');
+      isReady = false;
     } else {
       const imgMsg = this.proxyConfig.ogTag.image.length > 30 ?
           `${this.proxyConfig.ogTag.image.substring(0, 30)}...` : this.proxyConfig.ogTag.image;
+
+      const iconMsg = this.proxyConfig.iconUrl.length > 30 ?
+          `${this.proxyConfig.iconUrl.substring(0, 30)}...` : this.proxyConfig.iconUrl;
+
       console.log('Successful automatic fetched of OGP tag.' +
-          ` Title: ${this.proxyConfig.ogTag.title}` +
-          ` Image: ${imgMsg}`);
+          ` Title: ${this.proxyConfig.ogTag.title},` +
+          ` Image: ${imgMsg},` +
+          ` Icon: ${iconMsg}` );
+      isReady = true;
     }
-    this.initialize(this.proxyConfig, true);
+    this.initVariable(this.proxyConfig, isReady);
   }
 
   /**
@@ -116,8 +127,8 @@ class Proxy {
 
   /**
    * GET readyz
-   * When the automatic OGP tag extraction process is complete, the proxy will be set to Ready regardless of success or failure.
-   * The extract process is dependent on the Chrome environment, so NotionProxy is set to Ready regardless.
+   * When the automatic OGP tag extraction process is successful, the proxy will be set to Ready.
+   * If failure to fetch OGP tag, Server return 503.
    *
    * @param req Request of express
    * @param res Response of express
@@ -125,7 +136,7 @@ class Proxy {
    */
   getReadyZ(req, res) {
     if (!this.readyz) {
-      return res.status(503).send('Not ready yet because server is extracting ogp tag automatically');
+      return res.status(503).send('Not ready yet');
     }
     return res.status(200).send('OK');
   }

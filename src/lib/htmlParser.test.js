@@ -7,6 +7,7 @@ function getParser() {
   const desc = 'Test Desc';
   const image = 'https://eukarya.io/img/logo.svg';
   const url = 'https://eukarya.io';
+  const iconUrl = 'https://reearth.io/img/logo.svg';
   const type = 'website';
   const twitterCard = 'summary_large_image';
   const googleFont = '';
@@ -21,6 +22,7 @@ function getParser() {
       url,
       type,
       twitterCard,
+      iconUrl,
       googleFont,
       domain,
       customScript,
@@ -32,8 +34,7 @@ test('Parse html for Notion', () => {
   const parser = getParser();
   const element = new JSDOM(
       `
-<html class="notion-html">
-<head lang="en">
+<html class="notion-html"><head lang="en">
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,height=device-height,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
   <title>Notion – The all-in-one workspace for your notes, tasks, wikis, and databases.</title>
@@ -45,6 +46,8 @@ test('Parse html for Notion', () => {
   <meta property="og:description" content="A new tool that blends your everyday work apps into one. It's the all-in-one workspace for you and your team">
   <meta property="og:image" content="https://www.notion.so/images/meta/default.png">
   <meta property="og:locale" content="en_US">
+  <link rel="shortcut icon" href="https://www.notion.so/images/meta/default.png">
+  <link rel="apple-touch-icon" href="https://www.notion.so/images/meta/default.png">
 </head>
 <body>
   <p>Hello</p>
@@ -59,14 +62,16 @@ test('Parse html for Notion', () => {
   <meta name="viewport" content="width=device-width,height=device-height,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
   <title>Notion – The all-in-one workspace for your notes, tasks, wikis, and databases.</title>
   <meta name="description" content="Test Desc">
-  <meta property="og:site_name" content="Notion">
+  <meta property="og:site_name" content="Test Title">
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://eukarya.io">
   <meta property="og:title" content="Test Title">
   <meta property="og:description" content="Test Desc">
   <meta property="og:image" content="https://eukarya.io/img/logo.svg">
   <meta property="og:locale" content="en_US">
-</head>
+  <link rel="shortcut icon" href="https://reearth.io/img/logo.svg">
+  <link rel="apple-touch-icon" href="https://reearth.io/img/logo.svg">
+<meta property="og:logo" content="https://reearth.io/img/logo.svg"></head>
 <body>
   <p>Hello</p>
 
@@ -97,7 +102,19 @@ test('Parse html for Notion', () => {
         history.replaceState(history.state, '', '/' + slug);
       }
     }
-    const observer = new MutationObserver(function() {
+    var linkElement = document.querySelector('link[rel="shortcut icon"]');
+    const observer = new MutationObserver(function(mutationsList) {
+      if ('https://reearth.io/img/logo.svg' !== '') {
+        for (var mutation of mutationsList) {
+          if (mutation.type === 'childList' && mutation.addedNodes.length > 0) {
+            for (var node of mutation.addedNodes) {
+              if (node.nodeType === 1 && node.classList.contains('notion-presence-container') && linkElement) {
+                linkElement.href = 'https://reearth.io/img/logo.svg';
+              }
+            }
+          }
+        }
+      }
       if (redirected) {
         return;
       }

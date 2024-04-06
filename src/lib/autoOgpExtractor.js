@@ -10,10 +10,11 @@ const {JSDOM} = require("jsdom");
  * The image has Chrome installed if the notion proxy is running on a container. See Dockerfile.
  */
 class AutoOgpExtractor {
-  constructor(notionId, domain, isTls) {
+  constructor(notionId, domain, isTls, proxyPort) {
     this.notionId = notionId;
     this.domain = domain;
     this.isTls = isTls;
+    this.proxyPort = proxyPort;
   }
 
   async fetchHtmlAfterExecutedJs() {
@@ -24,7 +25,7 @@ class AutoOgpExtractor {
         args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage']
       });
       const page = await browser.newPage();
-      await page.goto(`http://localhost:3456/${this.notionId}`);
+      await page.goto(`http://localhost:${this.proxyPort}/${this.notionId}`);
       await page.waitForSelector('.notion-topbar');
       const html = await page.content();
       await browser.close();
@@ -63,6 +64,22 @@ class AutoOgpExtractor {
     }
     const protocol = this.isTls ? 'https' : 'http';
     let uri = images[0].src.substring(1);
+    return `${protocol}://${this.domain}/${uri}`;
+  }
+
+  extractIcon(htmlStr) {
+    if (htmlStr === '' || htmlStr === null) {
+      return null;
+    }
+    const dom = new JSDOM(htmlStr);
+    const imgElements = dom.window.document.querySelectorAll('img[alt="Page icon"]');
+    const srcValues = Array.from(imgElements).map(img => img.getAttribute('src'));
+    if (!srcValues || srcValues.length === 0) {
+      return null;
+    }
+
+    const protocol = this.isTls ? 'https' : 'http';
+    let uri = srcValues[0].substring(1);;
     return `${protocol}://${this.domain}/${uri}`;
   }
 
