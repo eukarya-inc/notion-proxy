@@ -2,7 +2,7 @@ class ProxyConfig {
   constructor() {
     this.googleFont = process.env.GOOGLE_FONT || '';
     this.proxyPort = process.env.PROXY_PORT || '3456';
-    this.domain = process.env.DOMAIN || 'localhost:3456';
+    this.domain = process.env.DOMAIN || `localhost:${this.proxyPort}`;
     this.isTls = process.env.IS_TLS || 'false';
     this.isTls = this.isTls === 'true';
     this.notionPageId = process.env.NOTION_PAGE_ID || 'f1db0cfbe246475784c67f279289abea';
