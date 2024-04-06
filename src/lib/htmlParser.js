@@ -11,18 +11,20 @@ class HtmlParser {
    * @param pageUrl ProxyConfig.ogTag.url
    * @param pageType ProxyConfig.ogTag.pageType
    * @param twitterCard ProxyConfig.twitterTag.twitterCard
+   * @param iconUrl ProxyConfig.iconUrl
    * @param googleFont ProxyConfig.googleFont
    * @param domain ProxyConfig.domain
    * @param customScript ProxyConfig.customScript
    * @param isTls ProxyConfig.isTls
    * @param stp slug to page record
    */
-  constructor(pageTitle, pageDesc, pageImage, pageUrl, pageType, twitterCard, googleFont, domain, customScript, isTls, stp) {
+  constructor(pageTitle, pageDesc, pageImage, pageUrl, pageType, twitterCard, iconUrl, googleFont, domain, customScript, isTls, stp) {
     this.pageTitle = pageTitle;
     this.pageDescription = pageDesc;
     this.pageImage = pageImage;
     this.pageUrl = pageUrl;
     this.pageType = pageType;
+    this.iconUrl = iconUrl;
     this.twitterCard = twitterCard;
     this.googleFont = googleFont;
     this.domain = domain;
@@ -42,7 +44,7 @@ class HtmlParser {
   parseMeta(element) {
     try {
       if (this.pageTitle !== '') {
-        if (element.getAttribute('property') === 'og:title' || element.getAttribute('name') === 'twitter:title') {
+        if (element.getAttribute('property') === 'og:title' || element.getAttribute('name') === 'twitter:title' || element.getAttribute('property') === 'og:site_name') {
           element.setAttribute('content', this.pageTitle);
         }
       }
@@ -76,6 +78,25 @@ class HtmlParser {
       }
     } catch (e) {
       console.log(e)
+    }
+  }
+
+  parseIcon(element, document) {
+    if (this.iconUrl !== '') {
+      element.setAttribute('href', this.iconUrl);
+
+      // og:logo
+      const headElement = document.querySelector('head');
+      const metaElement = document.createElement('meta');
+      metaElement.setAttribute('property', 'og:logo');
+      metaElement.setAttribute('content', this.iconUrl);
+      headElement.appendChild(metaElement);
+
+      // apple-touch-icon
+      const appleTouchIcon = document.querySelector('link[rel="apple-touch-icon"]');
+      if (appleTouchIcon) {
+        appleTouchIcon.setAttribute('href', this.iconUrl);
+      }
     }
   }
 
@@ -120,7 +141,19 @@ class HtmlParser {
         history.replaceState(history.state, '', '/' + slug);
       }
     }
-    const observer = new MutationObserver(function() {
+    var linkElement = document.querySelector('link[rel="shortcut icon"]');
+    const observer = new MutationObserver(function(mutationsList) {
+      if ('${this.iconUrl}' !== '') {
+        for (var mutation of mutationsList) {
+          if (mutation.type === 'childList' && mutation.addedNodes.length > 0) {
+            for (var node of mutation.addedNodes) {
+              if (node.nodeType === 1 && node.classList.contains('notion-presence-container') && linkElement) {
+                linkElement.href = '${this.iconUrl}';
+              }
+            }
+          }
+        }
+      }
       if (redirected) {
         return;
       }
@@ -187,6 +220,11 @@ class HtmlParser {
     let metas = document.querySelectorAll('meta')
     for (let m = 0; m < metas.length; m++) {
       this.parseMeta(metas[m])
+    }
+
+    const shortcutIcon = document.querySelector('link[rel="shortcut icon"]');
+    if (shortcutIcon) {
+      this.parseIcon(shortcutIcon, document)
     }
 
     let head = document.querySelector('head')

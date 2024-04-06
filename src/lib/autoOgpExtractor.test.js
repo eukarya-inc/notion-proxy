@@ -17,6 +17,9 @@ const testHtmlStr =  `
 </head>
 <body>
   <p>Hello</p>
+   <div>
+    <img alt="Page icon" src="/image/icon.png" referrerpolicy="same-origin">
+  </div>
   <div class="layout-full">
     <img src="/image/hello.png" referrerpolicy="same-origin" style="display: block; object-fit: cover; border-radius: 0px; width: 100%; height: 30vh; opacity: 1; object-position: center 50%;">
   </div>
@@ -28,7 +31,7 @@ function getAutoOgpExtractor() {
   const notionId = 'f1db0cfbe246475784c67f279289abea';
   const domain = 'eukarya.io';
   const isTls = true;
-  return new AutoOgpExtractor(notionId, domain, isTls);
+  return new AutoOgpExtractor(notionId, domain, isTls, '3456');
 }
 
 test('Extract og title', () => {
@@ -40,7 +43,14 @@ test('Extract og title', () => {
 
 test('Extract og image', () => {
   const extractor = getAutoOgpExtractor();
-  const imgage = extractor.extractOgImage(testHtmlStr);
+  const image = extractor.extractOgImage(testHtmlStr);
 
-  expect(imgage).toBe('https://eukarya.io/image/hello.png');
+  expect(image).toBe('https://eukarya.io/image/hello.png');
+});
+
+test('Extract icon', () => {
+  const extractor = getAutoOgpExtractor();
+  const icon = extractor.extractIcon(testHtmlStr);
+
+  expect(icon).toBe('https://eukarya.io/image/icon.png');
 });

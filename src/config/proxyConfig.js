@@ -8,8 +8,9 @@ class ProxyConfig {
     this.notionPageId = process.env.NOTION_PAGE_ID || 'f1db0cfbe246475784c67f279289abea';
     this.customScript = process.env.CUSTOM_SCRIPT || '';
     this.contentCacheSec = process.env.CONTENT_CACHE_SEC || '300';
-    this.autoSetOgp = process.env.AUTO_SET_OGP || 'false';
-    this.autoSetOgp = this.autoSetOgp === 'true';
+    this.iconUrl = process.env.ICON_URL || '';
+    this.autoSetOgTag = process.env.AUTO_SET_OG_TAG || 'false';
+    this.autoSetOgTag = this.autoSetOgTag === 'true';
     this.slugToPage = {
       "": this.notionPageId
     }
@@ -51,6 +52,10 @@ class ProxyConfig {
     if (isNaN(this.contentCacheSec)) {
       throw new Error("Invalid CONTENT_CACHE_SEC environment. Allow number");
     }
+  }
+
+  replaceIconUrl(v) {
+    this.iconUrl = v;
   }
 }
 
