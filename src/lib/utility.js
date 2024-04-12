@@ -1,5 +1,3 @@
-const Redirect = require('./redirect');
-
 function generateSitemap(domain, slugToPage) {
   let sitemap = '<?xml version="1.0" encoding="utf-8"?>'
   sitemap += '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"'
@@ -17,10 +15,11 @@ function generateSitemap(domain, slugToPage) {
 function generateNotionUrl(req, slugToPage) {
   let url = 'https://www.notion.so'
   let uri = req.originalUrl.substring(1)
+  let isRedirect = false;
 
   if (slugToPage.hasOwnProperty(uri)) {
     url = slugToPage[uri].split('/').pop();
-    throw new Redirect(url);
+    isRedirect = true;
 
   } else if (req.originalUrl.startsWith('/image/https')) {
     let uri = req.originalUrl.replace('https:/s3','https://s3')
@@ -32,7 +31,7 @@ function generateNotionUrl(req, slugToPage) {
   } else {
     url += req.originalUrl
   }
-  return url
+  return { url: url, isRedirect: isRedirect };
 }
 
 const AMAZON_NAWS_FLG = 'amazonaws.com';
@@ -62,9 +61,17 @@ function isContent(originalUrl) {
   return false;
 }
 
+function isCrawler(userAgent) {
+  if (userAgent && userAgent.toLowerCase().includes('slack') || userAgent.toLowerCase().includes('bot')) {
+    return true;
+  }
+  return false;
+}
+
 module.exports = {
   generateSitemap: generateSitemap,
   generateNotionUrl: generateNotionUrl,
   getMineTypeIfAwsUrl: getMineTypeIfAwsUrl,
   isContent: isContent,
+  isCrawler: isCrawler,
 };

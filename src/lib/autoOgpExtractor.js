@@ -79,7 +79,7 @@ class AutoOgpExtractor {
     }
 
     const protocol = this.isTls ? 'https' : 'http';
-    let uri = srcValues[0].substring(1);;
+    let uri = srcValues[0].substring(1);
     return `${protocol}://${this.domain}/${uri}`;
   }
 
