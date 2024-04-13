@@ -1,0 +1,36 @@
+name: Build
+on:
+  workflow_call:
+    inputs:
+      workload_identity_provider:
+        type: string
+      service_account:
+        type: string
+      gar_path:
+        type: string
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+      actions: read
+    steps:
+      - uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ inputs.workload_identity_provider }}
+          service_account: ${{ inputs.service_account }}
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      - name: Build and push
+        id: docker_build
+        uses: docker/build-push-action@v5
+        with:
+          context: ./server
+          file: ./server/Dockerfile.amd64
+          platforms: linux/amd64
+          push: true
+          tags: |
+            ${{ inputs.gar_path }}:latest
