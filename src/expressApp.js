@@ -11,6 +11,12 @@ function main() {
   app.use(compression())
   app.use(express.raw({ type: "application/json" }))
 
+  app.get('/images/logo-ios.png', (req, res) => {
+    return proxy.getFavicon(req, res);
+  });
+  app.get('/favicon.ico', (req, res) => {
+    return proxy.getFavicon(req, res);
+  });
   app.get('/sitemap.xml', (req, res) => {
     return proxy.getSitemap(req, res);
   });

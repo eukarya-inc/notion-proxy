@@ -1,10 +1,9 @@
 const Utility = require("../lib/utility");
-const Redirect = require("../lib/redirect");
 const HtmlParser = require("../lib/htmlParser");
 const AutoOgpExtractor = require("../lib/autoOgpExtractor");
 const ContentCache = require("./contentCache");
-const mime = require("mime-types");
 const {fetchUrl: fetch} = require("fetch");
+const {isCrawlerRequest} = require("../lib/utility");
 
 class Proxy {
 
@@ -101,6 +100,20 @@ class Proxy {
   }
 
   /**
+   * GET favicon.ico for web crawler and slack crawler
+   *
+   * @param req Request of express
+   * @param res Response of express
+   * @returns {*}
+   */
+  getFavicon(req, res) {
+    if (this.proxyConfig.iconUrl !== '') {
+      return res.redirect(301, this.proxyConfig.iconUrl);
+    }
+    this.get(req, res);
+  }
+
+  /**
    * GET sitemap.xml
    *
    * @param req Request of express
@@ -160,44 +173,35 @@ class Proxy {
    * @returns {*|void}
    */
   async get(req, res) {
-    let url;
-    try {
-      url = Utility.generateNotionUrl(req, this.proxyConfig.slugToPage);
-    } catch (e) {
-      if (e instanceof Redirect) {
-        return res.redirect(301, '/' + e.message);
-      } else {
-        console.error(e)
-        res.status(500).send(e);
-        return;
-      }
+    const info = Utility.generateNotionUrl(req, this.proxyConfig.slugToPage);
+    if (info.isRedirect) {
+      return res.redirect(301, `/${info.url}`);
     }
 
     const requestHeader = req.headers
+    const userAgent = requestHeader['user-agent']
+
     delete requestHeader['host']
     delete requestHeader['referer']
-    res.headers = requestHeader
 
-    let contentType = mime.lookup(req.originalUrl)
-    if (!contentType) {
-      contentType = 'text/html'
-    }
-    contentType = Utility.getMineTypeIfAwsUrl(req.originalUrl, contentType);
+    const contentType = Utility.getContentType(req.originalUrl)
+    res.headers = requestHeader
     res.set('Content-Type', contentType)
     res.removeHeader('Content-Security-Policy')
     res.removeHeader('X-Content-Security-Policy')
 
+    // Read cache if requested from not bot and cache is not expired
     const cachedData = await this.cacheStore.getData(req.originalUrl);
-    if (cachedData !== null) {
+    if (!isCrawlerRequest(userAgent) && cachedData !== null) {
       return res.send(cachedData);
     }
 
+    // Set it to If-Modified-Since now to accommodate 304
     if (Utility.isContent(req.originalUrl)) {
-      // Set it to If-Modified-Since now to accommodate 304
       requestHeader['If-Modified-Since'] = new Date().toString();
     }
 
-    return fetch(url, {
+    return fetch(info.url, {
       headers: requestHeader,
       method: 'GET',
     }, (error, header, body) => {
@@ -216,7 +220,9 @@ class Proxy {
         newBody = this.htmlParser.parse(newBody.toString());
       }
 
-      this.cacheStore.setData(req.originalUrl, newBody);
+      if (!isCrawlerRequest(userAgent)) {
+        this.cacheStore.setData(req.originalUrl, newBody);
+      }
       return res.send(newBody);
     })
   }

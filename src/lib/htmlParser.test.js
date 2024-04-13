@@ -69,9 +69,9 @@ test('Parse html for Notion', () => {
   <meta property="og:description" content="Test Desc">
   <meta property="og:image" content="https://eukarya.io/img/logo.svg">
   <meta property="og:locale" content="en_US">
-  <link rel="shortcut icon" href="https://reearth.io/img/logo.svg">
+  <link rel="icon" type="image/x-icon" href="https://reearth.io/img/logo.svg">
   <link rel="apple-touch-icon" href="https://reearth.io/img/logo.svg">
-<meta property="og:logo" content="https://reearth.io/img/logo.svg"></head>
+</head>
 <body>
   <p>Hello</p>
 
@@ -102,19 +102,7 @@ test('Parse html for Notion', () => {
         history.replaceState(history.state, '', '/' + slug);
       }
     }
-    var linkElement = document.querySelector('link[rel="shortcut icon"]');
     const observer = new MutationObserver(function(mutationsList) {
-      if ('https://reearth.io/img/logo.svg' !== '') {
-        for (var mutation of mutationsList) {
-          if (mutation.type === 'childList' && mutation.addedNodes.length > 0) {
-            for (var node of mutation.addedNodes) {
-              if (node.nodeType === 1 && node.classList.contains('notion-presence-container') && linkElement) {
-                linkElement.href = 'https://reearth.io/img/logo.svg';
-              }
-            }
-          }
-        }
-      }
       if (redirected) {
         return;
       }

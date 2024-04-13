@@ -1,4 +1,5 @@
 const {JSDOM} = require("jsdom");
+const {getMineTypeIfAwsUrl} = require("./utility");
 
 class HtmlParser {
 
@@ -7,7 +8,7 @@ class HtmlParser {
    *
    * @param pageTitle ProxyConfig.ogTag.title
    * @param pageDesc ProxyConfig.ogTag.desc
-   * @param pageImage ProxyConfig.ogTag.image
+   * @param pageImageUrl ProxyConfig.ogTag.image
    * @param pageUrl ProxyConfig.ogTag.url
    * @param pageType ProxyConfig.ogTag.pageType
    * @param twitterCard ProxyConfig.twitterTag.twitterCard
@@ -18,10 +19,10 @@ class HtmlParser {
    * @param isTls ProxyConfig.isTls
    * @param stp slug to page record
    */
-  constructor(pageTitle, pageDesc, pageImage, pageUrl, pageType, twitterCard, iconUrl, googleFont, domain, customScript, isTls, stp) {
+  constructor(pageTitle, pageDesc, pageImageUrl, pageUrl, pageType, twitterCard, iconUrl, googleFont, domain, customScript, isTls, stp) {
     this.pageTitle = pageTitle;
     this.pageDescription = pageDesc;
-    this.pageImage = pageImage;
+    this.pageImageUrl = pageImageUrl;
     this.pageUrl = pageUrl;
     this.pageType = pageType;
     this.iconUrl = iconUrl;
@@ -33,12 +34,52 @@ class HtmlParser {
     this.slugToPage = stp;
   }
 
-  parseMetaImageWithoutDom(htmlStr) {
-    if (this.pageImage !== '') {
-      htmlStr = htmlStr.replace(/(<meta property="og:image" content=")([^"]*)("[^>]*>)/g, `$1${this.pageImage}$3`);
-      htmlStr = htmlStr.replace(/(<meta name="twitter:image" content=")([^"]*)("[^>]*>)/g, `$1${this.pageImage}$3`);
+  // Note
+  // Replace og:image data without dom because set original image url.
+  // If you are using DOM, the url is escaped.
+  replaceMetaImageWithoutDom(htmlStr) {
+    if (this.pageImageUrl !== '') {
+      htmlStr = htmlStr.replace(/(<meta property="og:image" content=")([^"]*)("[^>]*>)/g, `$1${this.pageImageUrl}$3`);
+      htmlStr = htmlStr.replace(/(<meta name="twitter:image" content=")([^"]*)("[^>]*>)/g, `$1${this.pageImageUrl}$3`);
     }
     return htmlStr;
+  }
+
+  // Note
+  // Replace icon data without dom because set original icon url.
+  // If you are using DOM, the url is escaped.
+  replaceLinkIconWithoutDom(htmlStr) {
+    if (this.iconUrl !== '') {
+      const notionDefaultType = "image/x-icon";
+      const convertedType = getMineTypeIfAwsUrl(this.iconUrl, notionDefaultType);
+
+      // Replace href on icon if exist
+      const hrefRegexForIcon = new RegExp(`(<link rel="icon" type="image/png" href=")([^"]*)("[^>]*>)`, "g");
+      const typeRegexForIcon = new RegExp(`(<link rel="icon" type=")([^"]*)("[^>]*>)`, "g");
+      htmlStr = htmlStr.replace(hrefRegexForIcon, `$1${this.iconUrl}$3`);
+      htmlStr = htmlStr.replace(typeRegexForIcon, `$1${convertedType}$3`);
+
+      // Replace href on apple-touch-icon if exist
+      htmlStr = htmlStr.replace(/(<link rel="apple-touch-icon" href=")([^"]*)("[^>]*>)/g, `$1${this.iconUrl}$3`);
+    }
+    return htmlStr;
+  }
+
+  // Note
+  // Insert icon tag before shortcut icon tag if this.iconUrl is existed
+  // Also, Remove shortcut icon tag for notion rendering
+  // It seems that Notion's JavaScript monitors shortcut icon tag. And render the notion icon
+  parseShortCutIcon(document) {
+    const shortcutElement = document.querySelector('link[rel="shortcut icon"]');
+    if (shortcutElement && this.iconUrl !== '') {
+      const newElement = document.createElement('link');
+      newElement.setAttribute('rel', 'icon');
+      newElement.setAttribute('type', 'image/png');
+      newElement.setAttribute('href', this.iconUrl);
+      shortcutElement.parentNode.insertBefore(newElement, shortcutElement.nextSibling);
+
+      shortcutElement.remove();
+    }
   }
 
   parseMeta(element) {
@@ -78,25 +119,6 @@ class HtmlParser {
       }
     } catch (e) {
       console.log(e)
-    }
-  }
-
-  parseIcon(element, document) {
-    if (this.iconUrl !== '') {
-      element.setAttribute('href', this.iconUrl);
-
-      // og:logo
-      const headElement = document.querySelector('head');
-      const metaElement = document.createElement('meta');
-      metaElement.setAttribute('property', 'og:logo');
-      metaElement.setAttribute('content', this.iconUrl);
-      headElement.appendChild(metaElement);
-
-      // apple-touch-icon
-      const appleTouchIcon = document.querySelector('link[rel="apple-touch-icon"]');
-      if (appleTouchIcon) {
-        appleTouchIcon.setAttribute('href', this.iconUrl);
-      }
     }
   }
 
@@ -141,19 +163,7 @@ class HtmlParser {
         history.replaceState(history.state, '', '/' + slug);
       }
     }
-    var linkElement = document.querySelector('link[rel="shortcut icon"]');
     const observer = new MutationObserver(function(mutationsList) {
-      if ('${this.iconUrl}' !== '') {
-        for (var mutation of mutationsList) {
-          if (mutation.type === 'childList' && mutation.addedNodes.length > 0) {
-            for (var node of mutation.addedNodes) {
-              if (node.nodeType === 1 && node.classList.contains('notion-presence-container') && linkElement) {
-                linkElement.href = '${this.iconUrl}';
-              }
-            }
-          }
-        }
-      }
       if (redirected) {
         return;
       }
@@ -222,11 +232,6 @@ class HtmlParser {
       this.parseMeta(metas[m])
     }
 
-    const shortcutIcon = document.querySelector('link[rel="shortcut icon"]');
-    if (shortcutIcon) {
-      this.parseIcon(shortcutIcon, document)
-    }
-
     let head = document.querySelector('head')
     if (head) {
       this.parseHead(head)
@@ -237,8 +242,11 @@ class HtmlParser {
       this.parseBody(tagBody)
     }
 
+    this.parseShortCutIcon(document);
+
     let parsedHtmlStr = dom.serialize();
-    parsedHtmlStr = this.parseMetaImageWithoutDom(parsedHtmlStr);
+    parsedHtmlStr = this.replaceMetaImageWithoutDom(parsedHtmlStr);
+    parsedHtmlStr = this.replaceLinkIconWithoutDom(parsedHtmlStr);
     return parsedHtmlStr;
   }
 }
