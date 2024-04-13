@@ -1,3 +1,5 @@
+const mime = require("mime-types");
+
 function generateSitemap(domain, slugToPage) {
   let sitemap = '<?xml version="1.0" encoding="utf-8"?>'
   sitemap += '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"'
@@ -54,6 +56,14 @@ function getMineTypeIfAwsUrl(url, currentContentType) {
   return currentContentType;
 }
 
+function getContentType(originalUrl) {
+  let contentType = mime.lookup(originalUrl)
+  if (!contentType) {
+    contentType = 'text/html'
+  }
+  return getMineTypeIfAwsUrl(originalUrl, contentType);
+}
+
 function isContent(originalUrl) {
   if (originalUrl.startsWith('/image') || originalUrl.startsWith('/icons') || originalUrl.endsWith('.wasm')) {
     return true
@@ -61,7 +71,7 @@ function isContent(originalUrl) {
   return false;
 }
 
-function isCrawler(userAgent) {
+function isCrawlerRequest(userAgent) {
   if (userAgent && userAgent.toLowerCase().includes('slack') || userAgent.toLowerCase().includes('bot')) {
     return true;
   }
@@ -72,6 +82,7 @@ module.exports = {
   generateSitemap: generateSitemap,
   generateNotionUrl: generateNotionUrl,
   getMineTypeIfAwsUrl: getMineTypeIfAwsUrl,
+  getContentType: getContentType,
   isContent: isContent,
-  isCrawler: isCrawler,
+  isCrawlerRequest: isCrawlerRequest,
 };

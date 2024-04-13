@@ -1,4 +1,4 @@
-const {generateNotionUrl, getMineTypeIfAwsUrl, isContent, isCrawler} = require("./utility");
+const {generateNotionUrl, getMineTypeIfAwsUrl, isContent, isCrawlerRequest} = require("./utility");
 const slugToPage = {'': 'f1db0cfbe246475784c67f279289abea'}
 
 test('generateNotionUrl redirect when /', () => {
@@ -69,8 +69,8 @@ test('isContent', () => {
 
 test('isCrawler', () => {
   let userAgent = "slackBot";
-  expect(isCrawler(userAgent)).toBe(true);
+  expect(isCrawlerRequest(userAgent)).toBe(true);
 
   userAgent = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_12_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/80.0.3987.163 Safari/537.36";
-  expect(isCrawler(userAgent)).toBe(false);
+  expect(isCrawlerRequest(userAgent)).toBe(false);
 });

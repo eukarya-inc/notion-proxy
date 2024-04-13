@@ -2,9 +2,8 @@ const Utility = require("../lib/utility");
 const HtmlParser = require("../lib/htmlParser");
 const AutoOgpExtractor = require("../lib/autoOgpExtractor");
 const ContentCache = require("./contentCache");
-const mime = require("mime-types");
 const {fetchUrl: fetch} = require("fetch");
-const {isCrawler} = require("../lib/utility");
+const {isCrawlerRequest} = require("../lib/utility");
 
 class Proxy {
 
@@ -185,24 +184,20 @@ class Proxy {
     delete requestHeader['host']
     delete requestHeader['referer']
 
-    let contentType = mime.lookup(req.originalUrl)
-    if (!contentType) {
-      contentType = 'text/html'
-    }
-    contentType = Utility.getMineTypeIfAwsUrl(req.originalUrl, contentType);
-
+    const contentType = Utility.getContentType(req.originalUrl)
     res.headers = requestHeader
     res.set('Content-Type', contentType)
     res.removeHeader('Content-Security-Policy')
     res.removeHeader('X-Content-Security-Policy')
 
+    // Read cache if requested from not bot and cache is not expired
     const cachedData = await this.cacheStore.getData(req.originalUrl);
-    if (!isCrawler(userAgent) && cachedData !== null) {
+    if (!isCrawlerRequest(userAgent) && cachedData !== null) {
       return res.send(cachedData);
     }
 
+    // Set it to If-Modified-Since now to accommodate 304
     if (Utility.isContent(req.originalUrl)) {
-      // Set it to If-Modified-Since now to accommodate 304
       requestHeader['If-Modified-Since'] = new Date().toString();
     }
 
@@ -225,7 +220,7 @@ class Proxy {
         newBody = this.htmlParser.parse(newBody.toString());
       }
 
-      if (!isCrawler(userAgent)) {
+      if (!isCrawlerRequest(userAgent)) {
         this.cacheStore.setData(req.originalUrl, newBody);
       }
       return res.send(newBody);
