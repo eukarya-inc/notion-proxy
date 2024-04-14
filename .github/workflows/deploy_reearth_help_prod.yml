@@ -1,4 +1,4 @@
-name: Deploy prod
+name: Deploy reearth help prod
 on:
   workflow_dispatch:
 env:
