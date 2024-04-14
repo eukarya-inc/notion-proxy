@@ -36,7 +36,7 @@ class HtmlParser {
 
   // Note
   // Replace og:image data without dom because set original image url.
-  // If you are using DOM, the url is escaped.
+  // If it uses DOM, the url is escaped.
   replaceMetaImageWithoutDom(htmlStr) {
     if (this.pageImageUrl !== '') {
       htmlStr = htmlStr.replace(/(<meta property="og:image" content=")([^"]*)("[^>]*>)/g, `$1${this.pageImageUrl}$3`);
@@ -47,7 +47,7 @@ class HtmlParser {
 
   // Note
   // Replace icon data without dom because set original icon url.
-  // If you are using DOM, the url is escaped.
+  // If it uses DOM, the url is escaped.
   replaceLinkIconWithoutDom(htmlStr) {
     if (this.iconUrl !== '') {
       const notionDefaultType = "image/x-icon";
