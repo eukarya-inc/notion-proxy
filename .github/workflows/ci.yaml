@@ -3,7 +3,7 @@ name: CI
 on:
   push:
     branches:
-      - add-ci
+      - main
   pull_request:
   workflow_dispatch:
 jobs:
@@ -12,22 +12,20 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '18.x'
-
       - name: Dependencies
         run: npm ci
-
       - name: Test and Build
         run: npm install -g pkg && npm test && npm run build
   build:
-    uses: ./.github/workflows/_build.yml
+    uses: ./.github/workflows/_build.yaml
     needs: ci
-    if: ${{ !failure() && github.ref_name == 'add-ci' }}
+    if: ${{ !failure() && github.ref_name == 'main' }}
     with:
       workload_identity_provider: projects/723082692741/locations/global/workloadIdentityPools/github-oidc-pool/providers/github-provider
       service_account: reearth-dev-github-oidc@reearth-development.iam.gserviceaccount.com
-      gcs_dst: gs://app.dev.reearth.io
+      gar_repository: asia-northeast1-docker.pkg.dev
+      gar_dst: asia-northeast1-docker.pkg.dev/reearth-development/eukarya/notion-proxy
