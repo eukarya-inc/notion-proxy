@@ -44,7 +44,7 @@ function main() {
   })
   app.listen(Number(proxyConfig.proxyPort), async () => {
     await proxy.reloadProxyConfig();
-    console.log(`NotionProxy listening at localhost:${proxyConfig.proxyPort}, NotionId: ${proxyConfig.notionPageId}`)
+    console.log(`Listening at localhost:${proxyConfig.proxyPort} by NotionProxy. NotionId: ${proxyConfig.notionPageId}`)
   })
 }
 
