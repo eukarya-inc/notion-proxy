@@ -149,8 +149,6 @@ test('Parse html for Notion', () => {
       arguments[1] = arguments[1].replace('https://eukarya.io', 'www.notion.so');
       return open.apply(this, [].slice.call(arguments));
     };
-    <!-- required for comments identification -->
-    document.notionPageID = getPage();
   </script><script>console.log("hello world custom script")</script></body></html>`);
 });
 
