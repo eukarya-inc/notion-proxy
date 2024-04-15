@@ -57,7 +57,8 @@ npm run start_proxy
 
 > notion-proxy@1.0.0 start
 > node src/index.js
-Proxy listening at localhost:3456, NotionId: f1db0cfbe246475784c67f279289abea
+
+Listening at localhost:3456 by NotionProxy. NotionId: f1db0cfbe246475784c67f279289abea
 ```
 
 Start proxy binary.
@@ -67,8 +68,21 @@ npm install -g pkg
 npm run build
 ./notion-proxy
 
-Proxy listening at localhost:3456, NotionId: f1db0cfbe246475784c67f279289abea
+Listening at localhost:3456 by NotionProxy. NotionId: f1db0cfbe246475784c67f279289abea
 ```
+
+Start proxy with AUTO_SET_OG_TAG for debug.
+
+```bash
+export AUTO_SET_OG_TAG='true';  npm run start_proxy
+
+> notion-proxy@1.0.0 start
+> node src/index.js
+
+Successful automatic fetched of OGP tag. Title: Re:Earth Documentation, Image: http://localhost:3456/image/ht..., Icon: http://localhost:3456/image/ht...
+Listening at localhost:3456 by NotionProxy. NotionId: f1db0cfbe246475784c67f279289abea
+```
+
 
 ## Proxy example with your domain 
 
@@ -79,3 +93,12 @@ export IS_TLS="true" && \
 export AUTO_SET_OG_TAG="true" && \
 npm run start_proxy
 ```
+
+## How to contribute
+
+1. Fork or clone the project
+2. Create your feature branch and Commit your changes
+3. Push to the branch
+4. Open a new pull request
+
+[MIT License](LICENSE)

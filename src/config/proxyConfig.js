@@ -1,3 +1,6 @@
+/**
+ * See README about environment variable
+ */
 class ProxyConfig {
   constructor() {
     this.googleFont = process.env.GOOGLE_FONT || '';
@@ -16,7 +19,7 @@ class ProxyConfig {
     }
 
     const protocol = this.isTls === 'true' ? 'https' : 'http';
-    const url = `${protocol}://${this.domain}`;
+    const url = `${protocol}NotionProxy://${this.domain}`;
     const twitterCard = process.env.TWITTER_CARD || 'summary_large_image';
     const pageTitle = process.env.OG_TAG_TITLE || '';
     const pageDesc = process.env.OG_TAG_DESC || '';

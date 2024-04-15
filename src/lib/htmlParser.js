@@ -34,9 +34,10 @@ class HtmlParser {
     this.slugToPage = stp;
   }
 
-  // Note
-  // Replace og:image data without dom because set original image url.
-  // If it uses DOM, the url is escaped.
+  /**
+   * Replace og:image data without dom because set original image url.
+   * If it uses DOM, the url is escaped.
+   */
   replaceMetaImageWithoutDom(htmlStr) {
     if (this.pageImageUrl !== '') {
       htmlStr = htmlStr.replace(/(<meta property="og:image" content=")([^"]*)("[^>]*>)/g, `$1${this.pageImageUrl}$3`);
@@ -45,9 +46,10 @@ class HtmlParser {
     return htmlStr;
   }
 
-  // Note
-  // Replace icon data without dom because set original icon url.
-  // If it uses DOM, the url is escaped.
+  /**
+   * Replace icon data without dom because set original icon url.
+   * If it uses DOM, the url is escaped.
+   */
   replaceLinkIconWithoutDom(htmlStr) {
     if (this.iconUrl !== '') {
       const notionDefaultType = "image/x-icon";
@@ -65,10 +67,11 @@ class HtmlParser {
     return htmlStr;
   }
 
-  // Note
-  // Insert icon tag before shortcut icon tag if this.iconUrl is existed
-  // Also, Remove shortcut icon tag for notion rendering
-  // It seems that Notion's JavaScript monitors shortcut icon tag. And render the notion icon
+  /**
+   * Insert icon tag before shortcut icon tag if this.iconUrl is existed
+   * Also, Remove shortcut icon tag for notion rendering
+   * It seems that Notion's JavaScript monitors shortcut icon tag. And render the notion icon
+   */
   parseShortCutIcon(document) {
     const shortcutElement = document.querySelector('link[rel="shortcut icon"]');
     if (shortcutElement && this.iconUrl !== '') {
@@ -117,8 +120,7 @@ class HtmlParser {
       if (element.getAttribute('name') === 'apple-itunes-app') {
         element.remove();
       }
-    } catch (e) {
-      console.log(e)
+    } catch {
     }
   }
 
@@ -210,8 +212,6 @@ class HtmlParser {
       arguments[1] = arguments[1].replace('${protocol}://${this.domain}', 'www.notion.so');
       return open.apply(this, [].slice.call(arguments));
     };
-    <!-- required for comments identification -->
-    document.notionPageID = getPage();
   </script>${this.customScript}`
   }
 
