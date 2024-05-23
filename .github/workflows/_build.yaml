@@ -38,4 +38,4 @@ jobs:
           platforms: linux/amd64
           push: true
           tags: |
-            ${{ secrets.gar_dst }}:latest
+            ${{ secrets.IMAGE_NAME_GAR }}:latest
