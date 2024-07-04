@@ -1,8 +1,9 @@
 # Notion proxy
 
-Deliver notion pages via your domain.  
-Reference [fruitionsite](https://github.com/stephenou/fruitionsite) for rewrite html processing.  
-This proxy does not depend on Cloudflare and launches on express server.
+> [!WARNING]  
+> Notion launches [functionality to publish Notion site on custom domain](https://www.notion.so/ja-jp/help/connect-a-custom-domain-with-notion-sites). So this repository has been stopped for maintenance.
+
+Deliver notion pages via your domain. Reference [fruitionsite](https://github.com/stephenou/fruitionsite) for rewrite html processing.  This proxy does not depend on Cloudflare and launches on express server.
 
 ## Node Version
 
